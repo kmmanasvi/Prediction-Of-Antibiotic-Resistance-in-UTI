@@ -16,15 +16,14 @@ with open('model/feature_names.pkl', 'rb') as f:
     saved_feature_names = pickle.load(f)
 
 # Load bacteria and antibiotics options from the dataset
-# Change from reading Excel to CSV
 df = pd.read_csv('data/FINALDATA.csv')
 
 # Ensure column names are stripped of any leading/trailing spaces
 df.columns = df.columns.str.strip()
 
 # Load bacteria and antibiotic options
-bacteria_list = df['Name of the Bacteria'].unique().tolist()  # Updated column name
-antibiotics_list = df['Antibiotic Prescribed'].unique().tolist()  # Updated column name
+bacteria_list = df['Name of the Bacteria'].unique().tolist()  
+antibiotics_list = df['Antibiotic Prescribed'].unique().tolist()  
 
 # Home route
 @app.route('/')

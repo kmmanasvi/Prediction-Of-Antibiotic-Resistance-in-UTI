@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
-# Load the dataset (changed from .xlsx to .csv)
+# Load the dataset 
 df = pd.read_csv('data/FINALDATA.csv')
 
 # Function to clean and convert MIC values
