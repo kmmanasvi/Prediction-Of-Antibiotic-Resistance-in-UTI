@@ -20,25 +20,21 @@ const Home = () => {
   }, []);
 
   const handleSubmit = async () => {
-    // Make sure that all required fields are selected
     if (!micValue || selectedBacteria.length === 0 || selectedAntibiotics.length === 0) {
       alert("Please fill in all fields.");
       return;
     }
 
-    // Data to be sent to the backend for prediction
     const data = {
-      mic_value: micValue,
-      bacteria: selectedBacteria[0],  // Assuming one bacteria is selected
-      antibiotic: selectedAntibiotics[0],  // Assuming one antibiotic is selected
+      mic_value: micValue.trim(),
+      bacteria: selectedBacteria[0].trim(),
+      antibiotic: selectedAntibiotics[0].trim(),
     };
 
-    console.log('Sending data:', data);
-
-    // Call the prediction function
     try {
       const result = await predictResistance(data);
-      setPrediction(result);
+      console.log("Prediction result:", result);  // Log the result from the backend
+      setPrediction(result);  // Update state with the result
     } catch (error) {
       console.error("Error during prediction:", error);
       alert("Failed to get prediction. Please try again.");
@@ -67,7 +63,16 @@ const Home = () => {
       {prediction && (
         <div className="p-4 border rounded shadow">
           <h2 className="font-bold text-lg">Prediction Result</h2>
-          <p>{prediction.result}</p>
+          <p><strong>Primary Antibiotic ({selectedAntibiotics[0]}):</strong> {prediction.interpretation}</p>
+
+          <h3 className="font-semibold text-md mt-2">Other Antibiotic Interpretations:</h3>
+          <ul>
+            {Object.entries(prediction.other_interpretations).map(([antibiotic, interpretation]) => (
+              <li key={antibiotic}>
+                <strong>{antibiotic}:</strong> {interpretation}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
@@ -75,5 +80,3 @@ const Home = () => {
 };
 
 export default Home;
-
-

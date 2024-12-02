@@ -1,12 +1,5 @@
 import axios from "axios";
 
-// const API_BASE_URL = "http://localhost:5000";
-
-// export const fetchOptions = async () => {
-//   const response = await axios.get(`${API_BASE_URL}/options`);
-//   return response.data;
-// };
-
 export const fetchOptions = async () => {
   try {
     const response = await axios.get("http://localhost:5000/get-options");
@@ -17,12 +10,6 @@ export const fetchOptions = async () => {
     throw error;
   }
 };
-
-
-// export const predictResistance = async (data) => {
-//   const response = await axios.post(`${API_BASE_URL}/predict`, data);
-//   return response.data;
-// };
 
 export const predictResistance = async (data) => {
   try {

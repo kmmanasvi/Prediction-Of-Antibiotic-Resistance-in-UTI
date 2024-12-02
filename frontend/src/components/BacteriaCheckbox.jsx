@@ -10,14 +10,14 @@ const BacteriaCheckbox = ({ bacteriaList, selectedBacteria, setSelectedBacteria 
   return (
     <div className="p-4 border rounded shadow">
       <h2 className="font-bold text-lg">Bacteria</h2>
-      {bacteriaList.map((bacteria) => (
+      {bacteriaList.map ((bacteria) => (
         <div key={bacteria}>
           <label>
             <input
               type="checkbox"
               value={bacteria}
-              checked={selectedBacteria.includes(bacteria)}
-              onChange={() => handleChange(bacteria)}
+              checked={selectedBacteria.includes (bacteria)}
+              onChange={() => handleChange (bacteria)}
             />
             {bacteria}
           </label>

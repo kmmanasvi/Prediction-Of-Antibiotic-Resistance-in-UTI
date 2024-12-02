@@ -1,21 +1,30 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
-import pickle  
-from model.preprocess import preprocess_mic
-
+import pickle
+from model.preprocess import preprocess_mic  # Import preprocess_mic function
 
 app = Flask(__name__)
 CORS(app)
 
-# Load the trained model using pickle
+# Load trained model using pickle
 with open('model/trained_model.pkl', 'rb') as model_file:
     model = pickle.load(model_file)
 
+# Load feature names saved during model training
+with open('model/feature_names.pkl', 'rb') as f:
+    saved_feature_names = pickle.load(f)
+
 # Load bacteria and antibiotics options from the dataset
-df = pd.read_excel('data/FINALDATA.xlsx')
-bacteria_list = df['Name of the Bacteria '].unique().tolist()
-antibiotics_list = df['Antibiotic Prescribed'].unique().tolist()
+# Change from reading Excel to CSV
+df = pd.read_csv('data/FINALDATA.csv')
+
+# Ensure column names are stripped of any leading/trailing spaces
+df.columns = df.columns.str.strip()
+
+# Load bacteria and antibiotic options
+bacteria_list = df['Name of the Bacteria'].unique().tolist()  # Updated column name
+antibiotics_list = df['Antibiotic Prescribed'].unique().tolist()  # Updated column name
 
 # Home route
 @app.route('/')
@@ -27,60 +36,70 @@ def home():
 def favicon():
     return '', 204  # Return no content for favicon request
 
-
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        data = request.json
+        # Get data from the request
+        data = request.get_json()
+
+        # Preprocess MIC value
         mic_value = preprocess_mic(data['mic_value'])
-        bacteria = data['bacteria']
-        antibiotic = data['antibiotic']
 
-        # Ensure the feature names match the ones used in training
-        features = {f'Name of the Bacteria_{bacteria}': 1, f'Antibiotic Prescribed_{antibiotic}': 1}
-        # Make sure we add all other features with 0, even if they aren't selected
-        features.update({col: 0 for col in model.feature_names_in_ if col not in features})
+        if mic_value is None:
+            raise ValueError("Invalid MIC value format.")
 
-        # Don't forget to include the MIC value
-        features['MIC Value'] = mic_value
+        # Format bacteria and antibiotic columns
+        bacteria = f"Name of the Bacteria_{data['bacteria'].upper().strip()}"
+        antibiotic = f"Antibiotic Prescribed_{data['antibiotic'].upper().strip()}"
 
-        # Convert features to a DataFrame to match model input
-        input_df = pd.DataFrame([features])
+        # Ensure bacteria and antibiotic are in saved feature names
+        if bacteria not in saved_feature_names:
+            raise ValueError(f"Bacteria feature '{bacteria}' not found in the model's feature names.")
+        if antibiotic not in saved_feature_names:
+            raise ValueError(f"Antibiotic feature '{antibiotic}' not found in the model's feature names.")
 
-        # Make prediction
-        prediction = model.predict(input_df)[0]
-        other_predictions = {}
-
-        # Predict for other antibiotics
-        for other_antibiotic in antibiotics_list:
-            if other_antibiotic != antibiotic:
-                input_df[f'Antibiotic Prescribed_{other_antibiotic}'] = 1
-                input_df[f'Antibiotic Prescribed_{antibiotic}'] = 0
-                other_predictions[other_antibiotic] = model.predict(input_df)[0]
-
-        # Return the interpretation and predictions for other antibiotics
-        return jsonify({
-            'interpretation': 'Sensitive' if prediction == 0 else 'Resistant',
-            'other_interpretations': other_predictions or {}  # Empty dictionary if no predictions
+        # Create the input dataframe for prediction
+        input_features = pd.DataFrame({
+            "MIC Value": [mic_value],
+            bacteria: [1],  # One-hot encoding for bacteria
+            antibiotic: [1]  # One-hot encoding for antibiotic
         })
+
+        # Reindex to match saved features, ensuring missing columns are set to 0
+        input_features = input_features.reindex(columns=saved_feature_names, fill_value=0)
+
+        # Make the prediction using the model
+        prediction = model.predict(input_features)
+        interpretation = "Resistant" if int(prediction[0]) == 1 else "Sensitive"
+
+        # Optionally, predict for other antibiotics
+        other_interpretations = {}
+        for ab in antibiotics_list:
+            temp_input_features = input_features.copy()
+            ab_feature = f"Antibiotic Prescribed_{ab.upper().strip()}"
+            if ab_feature in saved_feature_names:
+                temp_input_features[ab_feature] = 1  # Set the antibiotic to 1 for one-hot encoding
+                other_prediction = model.predict(temp_input_features)
+                other_interpretations[ab] = int(other_prediction[0])
+
+        return jsonify({
+            "interpretation": interpretation,
+            "other_interpretations": {
+                key: ("Resistant" if value == 1 else "Sensitive") 
+                for key, value in other_interpretations.items()
+            }
+        })
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-
-
-# Options route
-# @app.route('/options', methods=['GET'])
-# def get_options():
-#     return jsonify({'bacteria': bacteria_list, 'antibiotics': antibiotics_list})
+        print("Error:", str(e))  # Print error for debugging
+        return jsonify({"error": str(e)}), 400
 
 @app.route('/get-options', methods=['GET'])
 def get_options():
     try:
-        # Extract feature names from the trained model
-        feature_names = model.feature_names_in_  # sklearn >= 1.0
-        bacteria = [name.split("_")[1] for name in feature_names if name.startswith("Name of the Bacteria _")]
-        antibiotics = [name.split("_")[1] for name in feature_names if name.startswith("Antibiotic Prescribed_")]
-
+        # Extract bacteria and antibiotics options from the dataframe
+        bacteria = [name.strip() for name in bacteria_list]  # Strip any leading/trailing spaces
+        antibiotics = [name.strip().upper() for name in antibiotics_list]  # Convert to uppercase
         return jsonify({
             "bacteria": bacteria,
             "antibiotics": antibiotics
@@ -88,91 +107,14 @@ def get_options():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/debug-features', methods=['GET'])
+def debug_features():
+    try:
+        # Convert the pandas Index to a list before returning
+        feature_names_list = saved_feature_names.tolist()
+        return jsonify({"feature_names": feature_names_list})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-# from flask import Flask, request, jsonify
-# from flask_cors import CORS
-# import pandas as pd
-# import pickle
-# from model.preprocess import preprocess_mic
-
-# app = Flask(__name__)
-# CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})  # Restricting CORS to frontend origin
-
-# # Load the trained model using pickle
-# with open('model/trained_model.pkl', 'rb') as model_file:
-#     model = pickle.load(model_file)
-
-# # Load bacteria and antibiotics options from the dataset
-# df = pd.read_excel('data/FINALDATA.xlsx')
-# bacteria_list = df['Name of the Bacteria '].unique().tolist()
-# antibiotics_list = df['Antibiotic Prescribed'].unique().tolist()
-
-# # Home route
-# @app.route('/')
-# def home():
-#     return "Welcome to the UTI Antibiotic Resistance Prediction API!"
-
-# # Favicon route to avoid 404 error
-# @app.route('/favicon.ico')
-# def favicon():
-#     return '', 204  # Return no content for favicon request
-
-# # Prediction route
-# @app.route('/predict', methods=['POST'])
-# def predict():
-#     try:
-#         # Receive incoming JSON data
-#         data = request.json
-#         print(f"Received data: {data}")  # Log incoming data
-
-#         # Extract values
-#         mic_value = preprocess_mic(data['mic_value'])
-#         bacteria = data['bacteria']
-#         antibiotic = data['antibiotic']
-#         print(f"Processed MIC: {mic_value}, Bacteria: {bacteria}, Antibiotic: {antibiotic}")  # Log processed values
-
-#         # Prepare input features for model
-#         features = {f'Name of the Bacteria _{bacteria}': 1, f'Antibiotic Prescribed_{antibiotic}': 1}
-#         features.update({col: 0 for col in model.feature_names_in_ if col not in features})
-#         features['MIC Value'] = mic_value
-
-#         # Convert to DataFrame
-#         input_df = pd.DataFrame([features])
-#         print(f"Input DataFrame for prediction: {input_df}")  # Log input DataFrame
-
-#         # Make prediction
-#         prediction = model.predict(input_df)[0]
-#         other_predictions = {}
-
-#         # Predict interpretations for other antibiotics
-#         for other_antibiotic in antibiotics_list:
-#             if other_antibiotic != antibiotic:
-#                 input_df[f'Antibiotic Prescribed_{other_antibiotic}'] = 1
-#                 input_df[f'Antibiotic Prescribed_{antibiotic}'] = 0
-#                 other_predictions[other_antibiotic] = model.predict(input_df)[0]
-
-#         # Return the prediction and other antibiotic interpretations
-#         return jsonify({
-#             'interpretation': 'Sensitive' if prediction == 0 else 'Resistant',
-#             'other_interpretations': other_predictions or {}  # Ensure it's an empty object if no predictions
-#         })
-
-#     except KeyError as e:
-#         # Return specific error for missing field
-#         return jsonify({'error': f"Missing field in input: {str(e)}"}), 400
-#     except Exception as e:
-#         # General error handler
-#         print(f"Error occurred: {e}")  # Log error details
-#         return jsonify({'error': str(e)}), 400
-
-# # Options route to get bacteria and antibiotic list
-# @app.route('/options', methods=['GET'])
-# def get_options():
-#     return jsonify({'bacteria': bacteria_list, 'antibiotics': antibiotics_list})
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
