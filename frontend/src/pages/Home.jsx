@@ -12,6 +12,11 @@ const Home = () => {
   const [micValue, setMicValue] = useState("");
   const [prediction, setPrediction] = useState(null);
 
+  // New State for Patient Details
+  const [patientName, setPatientName] = useState("");
+  const [patientAge, setPatientAge] = useState("");
+  const [patientGender, setPatientGender] = useState("");
+
   useEffect(() => {
     fetchOptions().then((data) => {
       setBacteriaList(data.bacteria);
@@ -25,16 +30,19 @@ const Home = () => {
       return;
     }
 
+    // Sanitize input data
     const data = {
       mic_value: micValue.trim(),
       bacteria: selectedBacteria[0].trim(),
       antibiotic: selectedAntibiotics[0].trim(),
     };
 
+    console.log("Sending sanitized data:", data); // Log sanitized data
+
     try {
       const result = await predictResistance(data);
-      console.log("Prediction result:", result);  // Log the result from the backend
-      setPrediction(result);  // Update state with the result
+      console.log("Prediction result:", result); // Log the result from the backend
+      setPrediction(result); // Update state with the result
     } catch (error) {
       console.error("Error during prediction:", error);
       alert("Failed to get prediction. Please try again.");
@@ -43,29 +51,79 @@ const Home = () => {
 
   return (
     <div className="p-8 space-y-4">
+      {/* Patient Details Section */}
+      <div className="p-4 border rounded shadow">
+        <h2 className="font-bold text-lg">Patient Details</h2>
+        <div className="space-y-2">
+          <div>
+            <label className="block font-semibold">Name</label>
+            <input
+              type="text"
+              value={patientName}
+              onChange={(e) => setPatientName(e.target.value)}
+              placeholder="Enter patient's name"
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block font-semibold">Age</label>
+            <input
+              type="number"
+              value={patientAge}
+              onChange={(e) => setPatientAge(e.target.value)}
+              placeholder="Enter patient's age"
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block font-semibold">Gender</label>
+            <select
+              value={patientGender}
+              onChange={(e) => setPatientGender(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Bacteria Checkbox */}
       <BacteriaCheckbox
         bacteriaList={bacteriaList}
         selectedBacteria={selectedBacteria}
         setSelectedBacteria={setSelectedBacteria}
       />
+
+      {/* Antibiotics Checkbox */}
       <AntibioticsCheckbox
         antibioticsList={antibioticsList}
         selectedAntibiotics={selectedAntibiotics}
         setSelectedAntibiotics={setSelectedAntibiotics}
       />
+
+      {/* MIC Input */}
       <MICInput micValue={micValue} setMicValue={setMicValue} />
+
+      {/* Submit Button */}
       <button
         onClick={handleSubmit}
         className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
       >
         Predict
       </button>
+
+      {/* Prediction Result */}
       {prediction && (
         <div className="p-4 border rounded shadow">
           <h2 className="font-bold text-lg">Prediction Result</h2>
-          <p><strong>Primary Antibiotic ({selectedAntibiotics[0]}):</strong> {prediction.interpretation}</p>
-
-          <h3 className="font-semibold text-md mt-2">Other Antibiotic Interpretations:</h3>
+          <p>
+            <strong>Primary Antibiotic ({selectedAntibiotics[0]}):</strong>{" "}
+            {prediction.interpretation}
+          </p>
+          <h3 className="font-semibold text-md mt-2">Other Interpretations for this Bacteria:</h3>
           <ul>
             {Object.entries(prediction.other_interpretations).map(([antibiotic, interpretation]) => (
               <li key={antibiotic}>
@@ -80,3 +138,4 @@ const Home = () => {
 };
 
 export default Home;
+

@@ -9,20 +9,20 @@ const AntibioticsCheckbox = ({ antibioticsList, selectedAntibiotics, setSelected
 
   return (
     <div className="p-4 border rounded shadow">
-      <h2 className="font-bold text-lg">Antibiotics</h2>
-      {antibioticsList.map((antibiotic) => (
-        <div key={antibiotic}>
-          <label>
+      <h2 className="font-bold text-lg mb-4">Antibiotic Prescribed</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {antibioticsList.map((antibiotic) => (
+          <div key={antibiotic} className="flex items-center space-x-2">
             <input
               type="checkbox"
               value={antibiotic}
               checked={selectedAntibiotics.includes(antibiotic)}
               onChange={() => handleChange(antibiotic)}
             />
-            {antibiotic}
-          </label>
-        </div>
-      ))}
+            <label>{antibiotic}</label>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
