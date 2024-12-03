@@ -35,6 +35,7 @@ def home():
 def favicon():
     return '', 204  # Return no content for favicon request
 
+
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
@@ -57,7 +58,7 @@ def predict():
         if antibiotic not in saved_feature_names:
             raise ValueError(f"Antibiotic feature '{antibiotic}' not found in the model's feature names.")
 
-        # Create the input dataframe for prediction
+        # Create the input dataframe for the primary prediction
         input_features = pd.DataFrame({
             "MIC Value": [mic_value],
             bacteria: [1],  # One-hot encoding for bacteria
@@ -67,31 +68,39 @@ def predict():
         # Reindex to match saved features, ensuring missing columns are set to 0
         input_features = input_features.reindex(columns=saved_feature_names, fill_value=0)
 
-        # Make the prediction using the model
+        # Make the primary prediction using the model
         prediction = model.predict(input_features)
         interpretation = "Resistant" if int(prediction[0]) == 1 else "Sensitive"
 
-        # Optionally, predict for other antibiotics
+        # Filter dataset for antibiotics associated with the selected bacteria
+        filtered_antibiotics = df[df['Name of the Bacteria'].str.strip().str.upper() == data['bacteria'].upper().strip()]['Antibiotic Prescribed'].unique()
+
+        # Predict interpretations for other antibiotics
         other_interpretations = {}
-        for ab in antibiotics_list:
-            temp_input_features = input_features.copy()
+        for ab in filtered_antibiotics:
             ab_feature = f"Antibiotic Prescribed_{ab.upper().strip()}"
+
+            # Reset input features and set bacteria/antibiotic features for current antibiotic
+            temp_input_features = pd.DataFrame({
+                "MIC Value": [mic_value],
+                bacteria: [1],  # Bacteria feature remains active
+            })
+            temp_input_features = temp_input_features.reindex(columns=saved_feature_names, fill_value=0)
+            
             if ab_feature in saved_feature_names:
-                temp_input_features[ab_feature] = 1  # Set the antibiotic to 1 for one-hot encoding
+                temp_input_features[ab_feature] = 1  # Set the current antibiotic feature to 1
                 other_prediction = model.predict(temp_input_features)
-                other_interpretations[ab] = int(other_prediction[0])
+                other_interpretations[ab] = "Resistant" if int(other_prediction[0]) == 1 else "Sensitive"
 
         return jsonify({
             "interpretation": interpretation,
-            "other_interpretations": {
-                key: ("Resistant" if value == 1 else "Sensitive") 
-                for key, value in other_interpretations.items()
-            }
+            "other_interpretations": other_interpretations
         })
 
     except Exception as e:
         print("Error:", str(e))  # Print error for debugging
         return jsonify({"error": str(e)}), 400
+
 
 @app.route('/get-options', methods=['GET'])
 def get_options():

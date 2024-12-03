@@ -116,23 +116,49 @@ const Home = () => {
       </button>
 
       {/* Prediction Result */}
-      {prediction && (
-        <div className="p-4 border rounded shadow">
-          <h2 className="font-bold text-lg">Prediction Result</h2>
-          <p>
-            <strong>Primary Antibiotic ({selectedAntibiotics[0]}):</strong>{" "}
-            {prediction.interpretation}
-          </p>
-          <h3 className="font-semibold text-md mt-2">Other Interpretations for this Bacteria:</h3>
-          <ul>
-            {Object.entries(prediction.other_interpretations).map(([antibiotic, interpretation]) => (
-              <li key={antibiotic}>
-                <strong>{antibiotic}:</strong> {interpretation}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+{prediction && (
+  <div className="p-4 border rounded shadow">
+    <h2 className="font-bold text-lg">Prediction Result</h2>
+    <p>
+      <strong>Primary Antibiotic ({selectedAntibiotics[0]}):</strong> {prediction.interpretation}
+    </p>
+    {/* <h3 className="font-semibold text-md mt-2">Other Interpretations for this Bacteria:</h3> */}
+
+    {/* Segregating Resistant and Sensitive */}
+    {Object.entries(prediction.other_interpretations).length > 0 && (
+      <div>
+        {/* Resistant Antibiotics */}
+        {Object.entries(prediction.other_interpretations).filter(([, interpretation]) => interpretation === "Resistant").length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-semibold ">You may be resistant to:</h4>
+            <ul className="list-disc ml-5">
+              {Object.entries(prediction.other_interpretations)
+                .filter(([, interpretation]) => interpretation === "Resistant")
+                .map(([antibiotic]) => (
+                  <li key={antibiotic}>{antibiotic}</li>
+                ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Sensitive Antibiotics */}
+        {Object.entries(prediction.other_interpretations).filter(([, interpretation]) => interpretation === "Sensitive").length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-semibold">You may be sensitive to:</h4>
+            <ul className="list-disc ml-5">
+              {Object.entries(prediction.other_interpretations)
+                .filter(([, interpretation]) => interpretation === "Sensitive")
+                .map(([antibiotic]) => (
+                  <li key={antibiotic}>{antibiotic}</li>
+                ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
+
     </div>
   );
 };
