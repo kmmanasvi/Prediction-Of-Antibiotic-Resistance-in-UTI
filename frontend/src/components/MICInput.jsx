@@ -2,7 +2,7 @@ import React from "react";
 
 const MICInput = ({ micValue, setMicValue }) => {
   return (
-    <div className="p-4 border rounded shadow">
+    <div className="p-4 bg-white rounded shadow">
       <h2 className="font-bold text-lg">MIC Value</h2>
       <input
         type="text"
