@@ -4,9 +4,18 @@ import pickle
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+import os
+
+# Get the absolute path to the 'data' and 'model' directories dynamically
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get the directory where this script is located
+DATA_DIR = os.path.join(BASE_DIR, 'data')  # Navigate to the correct data directory (backend/data)
+MODEL_DIR = os.path.join(BASE_DIR, '..', 'model')  # Navigate to the model directory
+
+# Ensure the model directory exists
+os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Load the dataset 
-df = pd.read_csv('data/FINALDATA.csv')
+df = pd.read_csv(os.path.join(DATA_DIR, 'processed_FINALDATA.csv'))  # Make sure to use the processed data
 
 # Function to clean and convert MIC values
 def preprocess_mic(value):
@@ -24,7 +33,7 @@ def preprocess_mic(value):
 # Apply MIC preprocessing
 df['MIC Value'] = df['MIC Value'].apply(preprocess_mic)
 
-# Encode "Interpretation" as 0 for 'S' and 1 for 'R'
+# Map Interpretation to numerical values
 df['Interpretation'] = df['Interpretation'].map({'S': 0, 'R': 1})
 
 # One-hot encode categorical variables
@@ -33,10 +42,10 @@ df_encoded = pd.get_dummies(df, columns=['Name of the Bacteria', 'Antibiotic Pre
 
 # Save the feature names for use during prediction
 feature_names = df_encoded.drop('Interpretation', axis=1).columns
-print("Feature Names Used During Training:", list(feature_names))  # DEBUG
+# print("Feature Names Used During Training:", list(feature_names))  # DEBUG
 
 # Save feature names to a pickle file for later use in prediction
-with open('model/feature_names.pkl', 'wb') as file:
+with open(os.path.join(MODEL_DIR, 'feature_names.pkl'), 'wb') as file:
     pickle.dump(feature_names, file)
 
 # Define features and target
@@ -59,7 +68,7 @@ print(classification_report(y_test, y_pred))
 print("Accuracy:", accuracy_score(y_test, y_pred))
 
 # Save the trained model
-with open('model/trained_model.pkl', 'wb') as file:
+with open(os.path.join(MODEL_DIR, 'trained_model.pkl'), 'wb') as file:
     pickle.dump(rf_model, file)
 
 print("Model and feature names saved successfully!")

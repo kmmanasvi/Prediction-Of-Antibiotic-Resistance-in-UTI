@@ -31,3 +31,5 @@ const AntibioticsCheckbox = ({ antibioticsList, selectedAntibiotics, setSelected
 };
 
 export default AntibioticsCheckbox;
+
+
